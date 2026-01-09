@@ -41,7 +41,6 @@ public class OrderService {
 
         BigDecimal totalPrice = (BigDecimal) result.get("totalPrice");
 
-        // Fetch order details
         List<OrderDetail> details = orderRepository.getOrderDetails(orderId);
         List<OrderItemDTO> items = details.stream()
                 .map(this::toOrderItemDTO)
@@ -53,7 +52,6 @@ public class OrderService {
                 .totalPrice(totalPrice)
                 .payStatus(0)
                 .orderStatus(0)
-                .createdAt(LocalDateTime.now())
                 .orderItems(items)
                 .build();
     }
@@ -64,9 +62,6 @@ public class OrderService {
         if (details.isEmpty()) {
             throw new RuntimeException("Order not found: " + orderId);
         }
-
-        // Get order info from first detail (all have same order info)
-        OrderDetail firstDetail = details.get(0);
 
         List<OrderItemDTO> items = details.stream()
                 .map(this::toOrderItemDTO)
@@ -95,6 +90,17 @@ public class OrderService {
                 .collect(Collectors.toList());
     }
 
+    public void payOrder(String orderId) {
+        Map<String, Object> result = orderRepository.payOrder(orderId);
+
+        int resultCode = (int) result.get("result");
+        String message = (String) result.get("message");
+
+        if (resultCode != 1) {
+            throw new RuntimeException(message);
+        }
+    }
+
     public void updateOrderStatus(String orderId, Integer status) {
         Map<String, Object> result = orderRepository.updateOrderStatus(orderId, status);
 
@@ -120,7 +126,6 @@ public class OrderService {
                 .totalPrice(order.getTotalPrice())
                 .payStatus(order.getPayStatus())
                 .orderStatus(order.getOrderStatus())
-                .createdAt(order.getCreatedAt())
                 .build();
     }
 

@@ -3,13 +3,13 @@
     <header class="header" v-if="isLoggedIn">
       <h1>🛒 電商購物中心</h1>
       <nav class="header-nav">
-        <router-link to="/orders" :class="{ active: $route.path === '/orders' }">
+        <router-link to="/orders" active-class="active">
           訂單管理
         </router-link>
         <router-link 
           v-if="isAdmin" 
           to="/products" 
-          :class="{ active: $route.path === '/products' }"
+          active-class="active"
         >
           商品管理
         </router-link>
@@ -44,6 +44,6 @@ const logout = () => {
   localStorage.removeItem('role')
   localStorage.removeItem('username')
   localStorage.removeItem('memberId')
-  router.push('/login')
+  window.location.href = '/login'
 }
 </script>

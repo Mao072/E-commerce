@@ -39,8 +39,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
                         // Admin only endpoints
                         .requestMatchers(HttpMethod.POST, "/api/products").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PATCH, "/api/orders/*/status").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/products/*/stock").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/orders/*/status").hasAnyRole("ADMIN", "USER")
                         .requestMatchers(HttpMethod.GET, "/api/orders/all").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/orders/*/pay").hasAnyRole("ADMIN", "USER")
                         // Authenticated endpoints
                         .requestMatchers("/api/orders/**").authenticated()
                         .anyRequest().authenticated())

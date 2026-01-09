@@ -13,7 +13,6 @@ import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
 import java.sql.ResultSet;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -38,12 +37,6 @@ public class OrderRepository {
         order.setTotalPrice(rs.getBigDecimal("total_price"));
         order.setPayStatus(rs.getInt("pay_status"));
         order.setOrderStatus(rs.getInt("order_status"));
-        order.setCreatedAt(rs.getTimestamp("created_at").toLocalDateTime());
-        try {
-            order.setUpdatedAt(rs.getTimestamp("updated_at").toLocalDateTime());
-        } catch (Exception e) {
-            // updated_at may not be present
-        }
         return order;
     };
 
@@ -101,20 +94,41 @@ public class OrderRepository {
         return jdbcTemplate.query("CALL sp_get_all_orders()", orderRowMapper);
     }
 
+    public Map<String, Object> payOrder(String orderId) {
+        Map<String, Object> result = new HashMap<>();
+        try {
+            int rows = jdbcTemplate.update("UPDATE `order` SET pay_status = 1 WHERE order_id = ?", orderId);
+            if (rows > 0) {
+                result.put("result", 1);
+                result.put("message", "Payment successful");
+            } else {
+                result.put("result", 0);
+                result.put("message", "Order not found");
+            }
+        } catch (Exception e) {
+            log.error("Payment failed", e);
+            result.put("result", -1);
+            result.put("message", "Database error");
+        }
+        return result;
+    }
+
     public Map<String, Object> updateOrderStatus(String orderId, Integer status) {
         Map<String, Object> result = new HashMap<>();
-
-        jdbcTemplate.update(
-                "CALL sp_update_order_status(?, ?, @p_result, @p_message)",
-                orderId,
-                status);
-
-        Map<String, Object> outParams = jdbcTemplate.queryForMap(
-                "SELECT @p_result as result, @p_message as message");
-
-        result.put("result", ((Number) outParams.get("result")).intValue());
-        result.put("message", outParams.get("message"));
-
+        try {
+            int rows = jdbcTemplate.update("UPDATE `order` SET order_status = ? WHERE order_id = ?", status, orderId);
+            if (rows > 0) {
+                result.put("result", 1);
+                result.put("message", "Order status updated successfully");
+            } else {
+                result.put("result", 0);
+                result.put("message", "Order not found");
+            }
+        } catch (Exception e) {
+            log.error("Update status failed", e);
+            result.put("result", -1);
+            result.put("message", "Database error");
+        }
         return result;
     }
 }

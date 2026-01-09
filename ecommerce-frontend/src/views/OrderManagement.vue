@@ -1,125 +1,156 @@
 <template>
   <div class="container">
-    <!-- Create Order Section (for Users) -->
-    <div class="card" v-if="!isAdmin">
-      <div class="page-title">
-        <h2>🛍️ 建立訂單</h2>
-      </div>
-
-      <div v-if="error" class="alert alert-error">{{ error }}</div>
-      <div v-if="success" class="alert alert-success">{{ success }}</div>
-
+    <div class="page-title">
+      <h2>📦 訂單管理</h2>
+    </div>
+    
+    <!-- User View: Create Order -->
+    <div v-if="!isAdmin" class="card" style="margin-bottom: 24px;">
+      <h3 style="margin-bottom: 20px;">🛍️ 選購商品</h3>
+      
       <div v-if="loadingProducts" class="loading">
         <div class="spinner"></div>
       </div>
-
-      <div v-else-if="availableProducts.length === 0" class="empty-state">
-        <h3>目前沒有可購買的商品</h3>
-        <p>請稍後再回來看看</p>
+      
+      <div v-else-if="products.length === 0" class="empty-state">
+        <p>目前沒有可購買的商品</p>
       </div>
-
-      <div v-else>
-        <div class="grid grid-3">
-          <div 
-            v-for="product in availableProducts" 
-            :key="product.productId"
-            class="product-card"
-            :class="{ selected: isSelected(product.productId) }"
-          >
-            <h3>{{ product.productName }}</h3>
-            <div class="price">NT$ {{ formatPrice(product.price) }}</div>
-            <div class="stock">庫存: {{ product.quantity }}</div>
-            
-            <div class="quantity-input" style="margin-top: 16px;">
-              <button 
-                @click="decreaseQuantity(product)"
-                :disabled="!isSelected(product.productId)"
-              >−</button>
-              <input 
-                type="number" 
-                :value="getQuantity(product.productId)" 
-                @change="updateQuantity(product, $event)"
-                min="0"
-                :max="product.quantity"
-              />
-              <button 
-                @click="increaseQuantity(product)"
-                :disabled="getQuantity(product.productId) >= product.quantity"
-              >+</button>
-            </div>
+      
+      <div v-else class="grid grid-3">
+        <div 
+          v-for="product in products" 
+          :key="product.productId" 
+          class="product-card"
+          :class="{ 'out-of-stock': product.quantity === 0 }"
+        >
+          <h3>{{ product.productName }}</h3>
+          <div class="price">NT$ {{ formatNumber(product.price) }}</div>
+          <div class="stock">
+            庫存: {{ product.quantity }}
+            <span v-if="product.quantity === 0" style="color: #e53e3e; font-weight: bold; margin-left: 8px;">(已售完)</span>
+          </div>
+          
+          <div class="quantity-input" style="margin-top: 16px;">
+            <button @click="decreaseQuantity(product.productId)" :disabled="product.quantity === 0">−</button>
+            <input 
+              type="number" 
+              :value="getCartQuantity(product.productId)" 
+              @change="setCartQuantity(product.productId, $event.target.value, product.quantity)"
+              min="0"
+              :max="product.quantity"
+              :disabled="product.quantity === 0"
+              :placeholder="product.quantity === 0 ? '0' : ''"
+            />
+            <button @click="increaseQuantity(product.productId, product.quantity)" :disabled="product.quantity === 0">+</button>
           </div>
         </div>
-
-        <div class="cart-summary" v-if="cartItems.length > 0">
-          <h3>📝 訂單摘要</h3>
-          <div v-for="item in cartItems" :key="item.productId" style="margin-bottom: 8px;">
-            {{ item.productName }} x {{ item.quantity }} = NT$ {{ formatPrice(item.subtotal) }}
+      </div>
+      
+      <!-- Cart Summary -->
+      <div v-if="cartTotal > 0" class="cart-summary">
+        <h3>🛒 購物車明細</h3>
+        <div style="margin-bottom: 16px;">
+          <div v-for="item in cartItems" :key="item.productId" style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+            <span>{{ item.name }} x {{ item.quantity }}</span>
+            <span>NT$ {{ formatNumber(item.price * item.quantity) }}</span>
           </div>
-          <hr style="margin: 16px 0; border-color: rgba(255,255,255,0.3);" />
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div>
-              <div>總金額</div>
-              <div class="cart-total">NT$ {{ formatPrice(totalPrice) }}</div>
-            </div>
-            <button class="btn btn-success" @click="handleCreateOrder" :disabled="ordering">
-              {{ ordering ? '建立中...' : '建立訂單' }}
-            </button>
-          </div>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span class="cart-total">總計: NT$ {{ formatNumber(cartTotal) }}</span>
+          <button class="btn" style="background: white; color: #667eea; font-weight: 600;" @click="submitOrder" :disabled="submitting">
+            {{ submitting ? '處理中...' : '送出訂單' }}
+          </button>
         </div>
       </div>
     </div>
-
-    <!-- Orders List Section -->
+    
+    <!-- Orders List -->
     <div class="card">
-      <div class="page-title">
-        <h2>📋 {{ isAdmin ? '所有訂單' : '我的訂單' }}</h2>
-        <button class="btn btn-outline" @click="fetchOrders">🔄 重新整理</button>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h3 style="margin: 0;">{{ isAdmin ? '📋 所有訂單' : '📋 我的訂單' }}</h3>
+        
+        <!-- Admin Filters -->
+        <div v-if="isAdmin" style="display: flex; gap: 12px;">
+          <input 
+            v-model="searchMemberId" 
+            type="text" 
+            class="form-control" 
+            placeholder="搜尋 Member ID..." 
+            style="width: 180px; padding: 8px 12px; font-size: 14px;"
+          />
+          <select 
+            v-model="filterStatus" 
+            class="form-control" 
+            style="width: 150px; padding: 8px 12px; font-size: 14px;"
+          >
+            <option value="">所有狀態</option>
+            <option value="0">備貨中</option>
+            <option value="1">運送中</option>
+            <option value="2">已到達</option>
+            <option value="3">已取貨</option>
+            <option value="-1">已取消</option>
+          </select>
+        </div>
       </div>
-
+      
       <div v-if="loadingOrders" class="loading">
         <div class="spinner"></div>
       </div>
-
-      <div v-else-if="orders.length === 0" class="empty-state">
-        <h3>尚無訂單</h3>
-        <p>{{ isAdmin ? '目前沒有任何訂單' : '開始購物建立您的第一筆訂單吧！' }}</p>
+      
+      <div v-else-if="filteredOrders.length === 0" class="empty-state">
+        <h3>尚無符合條件的訂單</h3>
+        <p>{{ isAdmin ? '請調整搜尋條件再試一次' : '開始選購商品建立您的第一筆訂單吧！' }}</p>
       </div>
-
+      
       <div v-else class="table-container">
         <table>
           <thead>
             <tr>
               <th>訂單編號</th>
-              <th v-if="isAdmin">會員編號</th>
-              <th>訂單金額</th>
+              <th v-if="isAdmin">會員</th>
+              <th>總金額</th>
               <th>付款狀態</th>
               <th>訂單狀態</th>
-              <th>建立時間</th>
               <th v-if="isAdmin">操作</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="order in orders" :key="order.orderId">
+            <tr v-for="order in filteredOrders" :key="order.orderId">
               <td>{{ order.orderId }}</td>
               <td v-if="isAdmin">{{ order.memberId }}</td>
-              <td class="price">NT$ {{ formatPrice(order.totalPrice) }}</td>
+              <td>NT$ {{ formatNumber(order.totalPrice) }}</td>
               <td>
-                <span :class="getPayStatusClass(order.payStatus)">
-                  {{ getPayStatusText(order.payStatus) }}
+                <span class="status-badge" :class="order.payStatus === 1 ? 'status-delivered' : 'status-pending'">
+                  {{ order.payStatus === 1 ? '已付款' : '未付款' }}
                 </span>
+                <button 
+                  v-if="!isAdmin && order.payStatus === 0" 
+                  class="btn btn-sm" 
+                  style="margin-left: 8px; padding: 4px 8px; font-size: 12px; background: #48bb78;"
+                  @click="handlePayment(order.orderId)"
+                >
+                  立即付款(模擬付款)
+                </button>
               </td>
               <td>
-                <span :class="getOrderStatusClass(order.orderStatus)">
-                  {{ getOrderStatusText(order.orderStatus) }}
+                <span class="status-badge" :class="getStatusClass(order.orderStatus)">
+                  {{ getStatusText(order.orderStatus) }}
                 </span>
+                <button 
+                  v-if="!isAdmin && order.orderStatus === 2" 
+                  class="btn btn-sm" 
+                  style="margin-left: 8px; padding: 4px 8px; font-size: 12px; background: #ed8936;"
+                  @click="handleReceive(order.orderId)"
+                >
+                  確認領取
+                </button>
               </td>
-              <td>{{ formatDate(order.createdAt) }}</td>
               <td v-if="isAdmin">
                 <select 
                   class="form-control" 
-                  style="width: auto; padding: 8px;"
+                  style="width: auto; padding: 8px 12px;"
                   :value="order.orderStatus"
-                  @change="handleUpdateStatus(order.orderId, $event)"
+                  @change="updateStatus(order.orderId, $event.target.value)"
                 >
                   <option value="0">備貨中</option>
                   <option value="1">運送中</option>
@@ -133,79 +164,132 @@
         </table>
       </div>
     </div>
+    
+    <!-- Success Modal -->
+    <div v-if="showSuccess" class="modal-overlay" @click.self="showSuccess = false">
+      <div class="modal" style="text-align: center;">
+        <h3>✅ 訂單成立</h3>
+        <p style="margin-bottom: 20px;">您的訂單已成功建立！</p>
+        <button class="btn btn-primary" @click="showSuccess = false">確定</button>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
-import { productApi, orderApi } from '../services/api'
+import { 
+  getAvailableProducts, 
+  getAllProducts,
+  createOrder, 
+  getMyOrders, 
+  getAllOrders,
+  updateOrderStatus,
+  payOrder
+} from '@/services/api'
 
 const isAdmin = computed(() => localStorage.getItem('role') === 'ADMIN')
+const memberId = computed(() => localStorage.getItem('memberId'))
 
-// Products
-const availableProducts = ref([])
-const loadingProducts = ref(true)
-const cart = reactive({})
-
-// Orders
+const products = ref([])
 const orders = ref([])
+const cart = reactive({})
+const loadingProducts = ref(true)
 const loadingOrders = ref(true)
+const submitting = ref(false)
+const showSuccess = ref(false)
 
-// State
-const error = ref('')
-const success = ref('')
-const ordering = ref(false)
+const searchMemberId = ref('')
+const filterStatus = ref('')
 
-// Computed
+const filteredOrders = computed(() => {
+  return orders.value.filter(order => {
+    const matchMember = !searchMemberId.value || 
+      order.memberId.toLowerCase().includes(searchMemberId.value.toLowerCase())
+    const matchStatus = filterStatus.value === '' || 
+      String(order.orderStatus) === filterStatus.value
+    return matchMember && matchStatus
+  })
+})
+
+const formatNumber = (num) => {
+  return new Intl.NumberFormat('zh-TW').format(num)
+}
+
+const getStatusText = (status) => {
+  const map = {
+    '-1': '已取消',
+    '0': '備貨中',
+    '1': '運送中',
+    '2': '已到達',
+    '3': '已取貨'
+  }
+  return map[String(status)] || '未知'
+}
+
+const getStatusClass = (status) => {
+  const map = {
+    '-1': 'status-cancelled',
+    '0': 'status-pending',
+    '1': 'status-shipping',
+    '2': 'status-delivered',
+    '3': 'status-completed'
+  }
+  return map[String(status)] || ''
+}
+
+const getCartQuantity = (productId) => cart[productId] || 0
+
+const setCartQuantity = (productId, value, max) => {
+  const num = Math.max(0, Math.min(parseInt(value) || 0, max))
+  if (num > 0) {
+    cart[productId] = num
+  } else {
+    delete cart[productId]
+  }
+}
+
+const increaseQuantity = (productId, max) => {
+  const current = cart[productId] || 0
+  if (current < max) {
+    cart[productId] = current + 1
+  }
+}
+
+const decreaseQuantity = (productId) => {
+  const current = cart[productId] || 0
+  if (current > 1) {
+    cart[productId] = current - 1
+  } else {
+    delete cart[productId]
+  }
+}
+
 const cartItems = computed(() => {
-  return Object.entries(cart)
-    .filter(([_, qty]) => qty > 0)
-    .map(([productId, quantity]) => {
-      const product = availableProducts.value.find(p => p.productId === productId)
-      return {
-        productId,
-        productName: product?.productName || '',
-        quantity,
-        standPrice: product?.price || 0,
-        subtotal: (product?.price || 0) * quantity
-      }
-    })
+  return Object.entries(cart).map(([productId, quantity]) => {
+    const product = products.value.find(p => p.productId === productId)
+    return {
+      productId,
+      quantity,
+      name: product?.productName || '',
+      price: product?.price || 0
+    }
+  })
 })
 
-const totalPrice = computed(() => {
-  return cartItems.value.reduce((sum, item) => sum + item.subtotal, 0)
+const cartTotal = computed(() => {
+  return cartItems.value.reduce((sum, item) => sum + (item.price * item.quantity), 0)
 })
-
-// Methods
-const isSelected = (productId) => cart[productId] > 0
-
-const getQuantity = (productId) => cart[productId] || 0
-
-const updateQuantity = (product, event) => {
-  const qty = parseInt(event.target.value) || 0
-  cart[product.productId] = Math.min(Math.max(qty, 0), product.quantity)
-}
-
-const increaseQuantity = (product) => {
-  if (!cart[product.productId]) cart[product.productId] = 0
-  if (cart[product.productId] < product.quantity) {
-    cart[product.productId]++
-  }
-}
-
-const decreaseQuantity = (product) => {
-  if (cart[product.productId] > 0) {
-    cart[product.productId]--
-  }
-}
 
 const fetchProducts = async () => {
   loadingProducts.value = true
   try {
-    const response = await productApi.getAvailable()
-    availableProducts.value = response.data.data || []
+    const response = await getAllProducts()
+    if (response.success) {
+      products.value = response.data
+    }
   } catch (err) {
-    error.value = err.response?.data?.message || '載入商品失敗'
+    console.error('Failed to fetch products:', err)
   } finally {
     loadingProducts.value = false
   }
@@ -214,86 +298,93 @@ const fetchProducts = async () => {
 const fetchOrders = async () => {
   loadingOrders.value = true
   try {
-    const response = isAdmin.value 
-      ? await orderApi.getAll()
-      : await orderApi.getMyOrders()
-    orders.value = response.data.data || []
+    const response = isAdmin.value ? await getAllOrders() : await getMyOrders()
+    if (response.success) {
+      orders.value = response.data
+    }
   } catch (err) {
-    console.error('載入訂單失敗', err)
+    console.error('Failed to fetch orders:', err)
   } finally {
     loadingOrders.value = false
   }
 }
 
-const handleCreateOrder = async () => {
-  ordering.value = true
-  error.value = ''
-  success.value = ''
+const submitOrder = async () => {
+  if (cartItems.value.length === 0) return
   
-  const orderItems = cartItems.value.map(item => ({
-    productId: item.productId,
-    quantity: item.quantity
-  }))
-  
+  submitting.value = true
   try {
-    await orderApi.create({
-      memberId: localStorage.getItem('memberId'),
-      orderItems
-    })
-    success.value = '訂單建立成功！'
+    const orderData = {
+      memberId: memberId.value,
+      orderItems: cartItems.value.map(item => ({
+        productId: item.productId,
+        quantity: item.quantity
+      }))
+    }
     
-    // Clear cart
-    Object.keys(cart).forEach(key => cart[key] = 0)
+    const response = await createOrder(orderData)
     
-    // Refresh data
-    fetchProducts()
-    fetchOrders()
+    if (response.success) {
+      // Clear cart
+      Object.keys(cart).forEach(key => delete cart[key])
+      showSuccess.value = true
+      await fetchProducts()
+      await fetchOrders()
+    } else {
+      alert(response.message || '訂單建立失敗')
+    }
   } catch (err) {
-    error.value = err.response?.data?.message || '建立訂單失敗'
+    alert(err.message || '訂單建立失敗，請稍後再試')
   } finally {
-    ordering.value = false
+    submitting.value = false
   }
 }
 
-const handleUpdateStatus = async (orderId, event) => {
-  const status = parseInt(event.target.value)
+const handlePayment = async (orderId) => {
+  if (!confirm('確定要支付此訂單嗎？')) return
+  
   try {
-    await orderApi.updateStatus(orderId, status)
-    fetchOrders()
+    // 呼叫專用的付款 API 來更新 pay_status
+    const response = await payOrder(orderId)
+    if (response.success) {
+      alert('付款成功！')
+      await fetchOrders()
+    } else {
+      alert(response.message || '付款失敗')
+    }
   } catch (err) {
-    error.value = err.response?.data?.message || '更新狀態失敗'
+    alert('付款處理出錯，請稍後再試')
   }
 }
 
-const getPayStatusText = (status) => {
-  return status === 1 ? '已付款' : '未付款'
-}
-
-const getPayStatusClass = (status) => {
-  return status === 1 ? 'status-badge status-delivered' : 'status-badge status-pending'
-}
-
-const getOrderStatusText = (status) => {
-  const map = { 0: '備貨中', 1: '運送中', 2: '已到達', 3: '已取貨', '-1': '已取消' }
-  return map[status] || '未知'
-}
-
-const getOrderStatusClass = (status) => {
-  const map = {
-    0: 'status-badge status-pending',
-    1: 'status-badge status-shipping',
-    2: 'status-badge status-delivered',
-    3: 'status-badge status-completed',
-    '-1': 'status-badge status-cancelled'
+const handleReceive = async (orderId) => {
+  if (!confirm('您確定已收到貨品並要完成訂單嗎？')) return
+  
+  try {
+    // 狀態 3 代表「已取貨」
+    const response = await updateOrderStatus(orderId, 3)
+    if (response.success) {
+      alert('商品已領取！')
+      await fetchOrders()
+    } else {
+      alert(response.message || '狀態更新失敗')
+    }
+  } catch (err) {
+    alert('操作失敗，請稍後再試')
   }
-  return map[status] || 'status-badge'
 }
 
-const formatPrice = (price) => Number(price).toLocaleString()
-
-const formatDate = (dateStr) => {
-  if (!dateStr) return '-'
-  return new Date(dateStr).toLocaleString('zh-TW')
+const updateStatus = async (orderId, status) => {
+  try {
+    const response = await updateOrderStatus(orderId, parseInt(status))
+    if (response.success) {
+      await fetchOrders()
+    } else {
+      alert(response.message || '狀態更新失敗')
+    }
+  } catch (err) {
+    alert(err.message || '狀態更新失敗')
+  }
 }
 
 onMounted(() => {
@@ -305,13 +396,18 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.price {
-  font-weight: 600;
-  color: var(--primary-color);
+.product-card.out-of-stock {
+  opacity: 0.6;
+  background: #f7fafc !important;
+  filter: grayscale(0.5);
+  cursor: not-allowed;
 }
 
-.product-card.selected {
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+.product-card.out-of-stock h3 {
+  color: #718096;
+}
+
+.product-card.out-of-stock .price {
+  color: #a0aec0;
 }
 </style>

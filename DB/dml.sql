@@ -7,13 +7,14 @@ USE ecommerce_db;
 
 -- =============================================
 -- 插入會員資料 (密碼為 BCrypt 加密後的 "password123")
+-- 使用 BCrypt Strength 10
 -- =============================================
 INSERT INTO member (member_id, username, password, role) VALUES
-('M001', 'admin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iKt5DXtRkRz5a2uv.1U/uBa/DOBy', 'ADMIN'),
-('M002', 'user1', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iKt5DXtRkRz5a2uv.1U/uBa/DOBy', 'USER'),
-('458', 'member458', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iKt5DXtRkRz5a2uv.1U/uBa/DOBy', 'USER'),
-('55688', 'member55688', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iKt5DXtRkRz5a2uv.1U/uBa/DOBy', 'USER'),
-('1713', 'member1713', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iKt5DXtRkRz5a2uv.1U/uBa/DOBy', 'USER');
+('M001', 'admin', '$2a$10$ydpZk/UHpZs7qA7knJ3efOoX0OAlNv2mJjLZpr0OpBx0PFt5RFFbS', 'ADMIN'),
+('M002', 'user1', '$2a$10$ydpZk/UHpZs7qA7knJ3efOoX0OAlNv2mJjLZpr0OpBx0PFt5RFFbS', 'USER'),
+('458', 'member458', '$2a$10$ydpZk/UHpZs7qA7knJ3efOoX0OAlNv2mJjLZpr0OpBx0PFt5RFFbS', 'USER'),
+('55688', 'member55688', '$2a$10$ydpZk/UHpZs7qA7knJ3efOoX0OAlNv2mJjLZpr0OpBx0PFt5RFFbS', 'USER'),
+('1713', 'member1713', '$2a$10$ydpZk/UHpZs7qA7knJ3efOoX0OAlNv2mJjLZpr0OpBx0PFt5RFFbS', 'USER');
 
 -- =============================================
 -- 插入商品資料

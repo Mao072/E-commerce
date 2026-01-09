@@ -6,7 +6,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 
 @Data
 @Builder
@@ -19,6 +18,4 @@ public class Order {
     private BigDecimal totalPrice;
     private Integer payStatus;
     private Integer orderStatus;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
 }

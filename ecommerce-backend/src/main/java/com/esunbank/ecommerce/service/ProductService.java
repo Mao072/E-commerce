@@ -43,14 +43,23 @@ public class ProductService {
         return productDTO;
     }
 
+    public void updateStock(String productId, Integer addQuantity) {
+        Map<String, Object> result = productRepository.updateStock(productId, addQuantity);
+
+        int resultCode = (int) result.get("result");
+        String message = (String) result.get("message");
+
+        if (resultCode != 1) {
+            throw new RuntimeException(message);
+        }
+    }
+
     private ProductDTO toDTO(Product product) {
         return ProductDTO.builder()
                 .productId(product.getProductId())
                 .productName(product.getProductName())
                 .price(product.getPrice())
                 .quantity(product.getQuantity())
-                .createdAt(product.getCreatedAt())
-                .updatedAt(product.getUpdatedAt())
                 .build();
     }
 }

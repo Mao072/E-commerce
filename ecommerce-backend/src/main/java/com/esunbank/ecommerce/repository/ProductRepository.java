@@ -2,7 +2,6 @@ package com.esunbank.ecommerce.repository;
 
 import com.esunbank.ecommerce.dto.ProductDTO;
 import com.esunbank.ecommerce.entity.Product;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -10,7 +9,6 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
 import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,12 +26,6 @@ public class ProductRepository {
         product.setProductName(rs.getString("product_name"));
         product.setPrice(rs.getBigDecimal("price"));
         product.setQuantity(rs.getInt("quantity"));
-        try {
-            product.setCreatedAt(rs.getTimestamp("created_at").toLocalDateTime());
-            product.setUpdatedAt(rs.getTimestamp("updated_at").toLocalDateTime());
-        } catch (Exception e) {
-            // Some queries may not return these fields
-        }
         return product;
     };
 
@@ -61,6 +53,26 @@ public class ProductRepository {
         result.put("result", ((Number) outParams.get("result")).intValue());
         result.put("message", outParams.get("message"));
 
+        return result;
+    }
+
+    public Map<String, Object> updateStock(String productId, Integer addQuantity) {
+        Map<String, Object> result = new HashMap<>();
+        try {
+            int rows = jdbcTemplate.update("UPDATE product SET quantity = quantity + ? WHERE product_id = ?",
+                    addQuantity, productId);
+            if (rows > 0) {
+                result.put("result", 1);
+                result.put("message", "Stock updated successfully");
+            } else {
+                result.put("result", 0);
+                result.put("message", "Product not found");
+            }
+        } catch (Exception e) {
+            log.error("Update stock failed", e);
+            result.put("result", -1);
+            result.put("message", "Database error");
+        }
         return result;
     }
 }

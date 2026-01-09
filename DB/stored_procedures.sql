@@ -27,7 +27,6 @@ BEGIN
         ROLLBACK;
     END;
     
-    -- 檢查商品編號是否已存在
     IF EXISTS (SELECT 1 FROM product WHERE product_id = p_product_id) THEN
         SET p_result = 0;
         SET p_message = 'Product ID already exists';
@@ -50,11 +49,9 @@ BEGIN
         product_id,
         product_name,
         price,
-        quantity,
-        created_at,
-        updated_at
+        quantity
     FROM product
-    ORDER BY created_at DESC;
+    ORDER BY product_id;
 END //
 
 -- =============================================
@@ -104,21 +101,21 @@ proc_label: BEGIN
     
     START TRANSACTION;
     
-    -- 取得訂單項目數量
+    -- 首先插入訂單主表 (總金額先設為 0，等後續計算完再更新，或者先計算出總額)
+    INSERT INTO `order` (order_id, member_id, total_price, pay_status, order_status)
+    VALUES (p_order_id, p_member_id, 0, 0, 0);
+    
     SET v_count = JSON_LENGTH(p_order_items);
     
-    -- 遍歷每個訂單項目
     WHILE v_index < v_count DO
         SET v_product_id = JSON_UNQUOTE(JSON_EXTRACT(p_order_items, CONCAT('$[', v_index, '].productId')));
         SET v_quantity = JSON_EXTRACT(p_order_items, CONCAT('$[', v_index, '].quantity'));
         
-        -- 檢查並鎖定商品資料 (使用 FOR UPDATE 避免競爭條件)
         SELECT quantity, price INTO v_current_stock, v_price
         FROM product
         WHERE product_id = v_product_id
         FOR UPDATE;
         
-        -- 檢查庫存是否足夠
         IF v_current_stock IS NULL THEN
             SET p_result = 0;
             SET p_message = CONCAT('Product not found: ', v_product_id);
@@ -131,25 +128,24 @@ proc_label: BEGIN
             LEAVE proc_label;
         END IF;
         
-        -- 計算單品項總價
         SET v_item_price = v_price * v_quantity;
         SET v_total = v_total + v_item_price;
         
-        -- 更新庫存
         UPDATE product
         SET quantity = quantity - v_quantity
         WHERE product_id = v_product_id;
         
-        -- 插入訂單明細
+        -- 現在可以安全插入明細，因為訂單已存在
         INSERT INTO order_detail (order_id, product_id, quantity, stand_price, item_price)
         VALUES (p_order_id, v_product_id, v_quantity, v_price, v_item_price);
         
         SET v_index = v_index + 1;
     END WHILE;
     
-    -- 插入訂單主檔
-    INSERT INTO `order` (order_id, member_id, total_price, pay_status, order_status)
-    VALUES (p_order_id, p_member_id, v_total, 0, 0);
+    -- 更新訂單總金額
+    UPDATE `order` 
+    SET total_price = v_total 
+    WHERE order_id = p_order_id;
     
     SET p_result = 1;
     SET p_message = 'Order created successfully';
@@ -172,7 +168,6 @@ BEGIN
         o.total_price,
         o.pay_status,
         o.order_status,
-        o.created_at,
         od.order_item_sn,
         od.product_id,
         p.product_name,
@@ -256,8 +251,7 @@ BEGIN
         member_id,
         username,
         password,
-        role,
-        created_at
+        role
     FROM member
     WHERE username = p_username;
 END //
@@ -275,12 +269,10 @@ BEGIN
         member_id,
         total_price,
         pay_status,
-        order_status,
-        created_at,
-        updated_at
+        order_status
     FROM `order`
     WHERE member_id = p_member_id
-    ORDER BY created_at DESC;
+    ORDER BY order_id DESC;
 END //
 
 -- =============================================
@@ -295,12 +287,10 @@ BEGIN
         m.username,
         o.total_price,
         o.pay_status,
-        o.order_status,
-        o.created_at,
-        o.updated_at
+        o.order_status
     FROM `order` o
     JOIN member m ON o.member_id = m.member_id
-    ORDER BY o.created_at DESC;
+    ORDER BY o.order_id DESC;
 END //
 
 DELIMITER ;

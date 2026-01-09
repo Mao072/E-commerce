@@ -23,7 +23,7 @@ api.interceptors.request.use(
 
 // Response interceptor for handling errors
 api.interceptors.response.use(
-    (response) => response,
+    (response) => response.data,
     (error) => {
         if (error.response?.status === 401) {
             localStorage.removeItem('token')
@@ -32,30 +32,27 @@ api.interceptors.response.use(
             localStorage.removeItem('memberId')
             window.location.href = '/login'
         }
-        return Promise.reject(error)
+        const message = error.response?.data?.message || error.message || 'Request failed'
+        return Promise.reject({ message })
     }
 )
 
 // Auth APIs
-export const authApi = {
-    login: (data) => api.post('/auth/login', data),
-    register: (data) => api.post('/auth/register', data)
-}
+export const login = (data) => api.post('/auth/login', data)
+export const register = (data) => api.post('/auth/register', data)
 
 // Product APIs
-export const productApi = {
-    getAll: () => api.get('/products'),
-    getAvailable: () => api.get('/products/available'),
-    add: (data) => api.post('/products', data)
-}
+export const getAllProducts = () => api.get('/products')
+export const getAvailableProducts = () => api.get('/products/available')
+export const addProduct = (data) => api.post('/products', data)
+export const updateProductStock = (productId, addQuantity) => api.patch(`/products/${productId}/stock`, { addQuantity })
 
 // Order APIs
-export const orderApi = {
-    create: (data) => api.post('/orders', data),
-    getMyOrders: () => api.get('/orders/my'),
-    getAll: () => api.get('/orders/all'),
-    getDetails: (orderId) => api.get(`/orders/${orderId}`),
-    updateStatus: (orderId, status) => api.patch(`/orders/${orderId}/status`, { status })
-}
+export const createOrder = (data) => api.post('/orders', data)
+export const getMyOrders = () => api.get('/orders/my')
+export const getAllOrders = () => api.get('/orders/all')
+export const getOrderDetails = (orderId) => api.get(`/orders/${orderId}`)
+export const updateOrderStatus = (orderId, status) => api.patch(`/orders/${orderId}/status`, { status })
+export const payOrder = (orderId) => api.post(`/orders/${orderId}/pay`)
 
 export default api

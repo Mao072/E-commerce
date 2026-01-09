@@ -1,43 +1,43 @@
 <template>
   <div class="auth-container">
     <div class="auth-card">
-      <h2>歡迎回來</h2>
-      <p class="subtitle">登入您的帳號</p>
+      <h2>🔐 登入</h2>
+      <p class="subtitle">歡迎回來！請登入您的帳號</p>
       
-      <div v-if="error" class="alert alert-error">{{ error }}</div>
+      <div v-if="error" class="alert alert-error">
+        {{ error }}
+      </div>
       
       <form @submit.prevent="handleLogin">
         <div class="form-group">
-          <label for="username">帳號</label>
+          <label>帳號</label>
           <input 
-            id="username"
             v-model="form.username" 
             type="text" 
-            class="form-control"
+            class="form-control" 
             placeholder="請輸入帳號"
             required
           />
         </div>
         
         <div class="form-group">
-          <label for="password">密碼</label>
+          <label>密碼</label>
           <input 
-            id="password"
             v-model="form.password" 
             type="password" 
-            class="form-control"
+            class="form-control" 
             placeholder="請輸入密碼"
             required
           />
         </div>
         
-        <button type="submit" class="btn btn-primary" style="width: 100%;" :disabled="loading">
+        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 14px;" :disabled="loading">
           {{ loading ? '登入中...' : '登入' }}
         </button>
       </form>
       
       <p class="auth-links">
-        還沒有帳號？<router-link to="/register">立即註冊</router-link>
+        還沒有帳號？ <router-link to="/register">立即註冊</router-link>
       </p>
     </div>
   </div>
@@ -46,7 +46,7 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
-import { authApi } from '../services/api'
+import { login } from '@/services/api'
 
 const router = useRouter()
 const loading = ref(false)
@@ -62,22 +62,24 @@ const handleLogin = async () => {
   error.value = ''
   
   try {
-    const response = await authApi.login(form)
-    const { token, memberId, username, role } = response.data.data
+    const response = await login(form)
     
-    localStorage.setItem('token', token)
-    localStorage.setItem('memberId', memberId)
-    localStorage.setItem('username', username)
-    localStorage.setItem('role', role)
-    
-    // Redirect based on role
-    if (role === 'ADMIN') {
-      router.push('/products')
+    if (response.success) {
+      localStorage.setItem('token', response.data.token)
+      localStorage.setItem('role', response.data.role)
+      localStorage.setItem('username', response.data.username)
+      localStorage.setItem('memberId', response.data.memberId)
+      
+      if (response.data.role === 'ADMIN') {
+        window.location.href = '/products'
+      } else {
+        window.location.href = '/orders'
+      }
     } else {
-      router.push('/orders')
+      error.value = response.message || '登入失敗'
     }
   } catch (err) {
-    error.value = err.response?.data?.message || '登入失敗，請檢查帳號密碼'
+    error.value = err.message || '登入失敗，請稍後再試'
   } finally {
     loading.value = false
   }

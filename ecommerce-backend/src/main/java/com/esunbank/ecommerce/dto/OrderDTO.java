@@ -9,7 +9,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
@@ -26,7 +25,6 @@ public class OrderDTO {
     private BigDecimal totalPrice;
     private Integer payStatus;
     private Integer orderStatus;
-    private LocalDateTime createdAt;
 
     @NotEmpty(message = "Order items cannot be empty")
     @Valid

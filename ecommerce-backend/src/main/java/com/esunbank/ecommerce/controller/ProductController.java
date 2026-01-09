@@ -2,6 +2,7 @@ package com.esunbank.ecommerce.controller;
 
 import com.esunbank.ecommerce.dto.ApiResponse;
 import com.esunbank.ecommerce.dto.ProductDTO;
+import com.esunbank.ecommerce.dto.UpdateStockRequest;
 import com.esunbank.ecommerce.service.ProductService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -35,5 +36,13 @@ public class ProductController {
         ProductDTO created = productService.addProduct(productDTO);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(created, "Product added successfully"));
+    }
+
+    @PatchMapping("/{productId}/stock")
+    public ResponseEntity<ApiResponse<Void>> updateStock(
+            @PathVariable String productId,
+            @Valid @RequestBody UpdateStockRequest request) {
+        productService.updateStock(productId, request.getAddQuantity());
+        return ResponseEntity.ok(ApiResponse.success(null, "Stock updated successfully"));
     }
 }

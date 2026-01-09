@@ -11,7 +11,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 
 @Data
 @Builder
@@ -34,7 +33,4 @@ public class ProductDTO {
     @NotNull(message = "Quantity is required")
     @Min(value = 0, message = "Quantity must be >= 0")
     private Integer quantity;
-
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
 }

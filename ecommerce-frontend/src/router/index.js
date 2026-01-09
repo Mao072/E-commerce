@@ -43,14 +43,29 @@ router.beforeEach((to, from, next) => {
     const token = localStorage.getItem('token')
     const role = localStorage.getItem('role')
 
+    // If user is logged in and tries to access login/register, redirect to appropriate page
+    if ((to.path === '/login' || to.path === '/register' || to.path === '/') && token) {
+        if (role === 'ADMIN') {
+            next('/products')
+        } else {
+            next('/orders')
+        }
+        return
+    }
+
+    // If page requires auth and user is not logged in
     if (to.meta.requiresAuth && !token) {
         next('/login')
-    } else if (to.meta.role && role !== to.meta.role) {
-        // If page requires specific role and user doesn't have it, redirect
-        next('/orders')
-    } else {
-        next()
+        return
     }
+
+    // If page requires specific role and user doesn't have it
+    if (to.meta.role && role !== to.meta.role) {
+        next('/orders')
+        return
+    }
+
+    next()
 })
 
 export default router

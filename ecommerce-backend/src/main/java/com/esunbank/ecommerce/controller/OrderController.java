@@ -53,6 +53,12 @@ public class OrderController {
         return ResponseEntity.ok(ApiResponse.success(orders));
     }
 
+    @PostMapping("/{orderId}/pay")
+    public ResponseEntity<ApiResponse<Void>> payOrder(@PathVariable String orderId) {
+        orderService.payOrder(orderId);
+        return ResponseEntity.ok(ApiResponse.success(null, "Order paid successfully"));
+    }
+
     @PatchMapping("/{orderId}/status")
     public ResponseEntity<ApiResponse<Void>> updateOrderStatus(
             @PathVariable String orderId,

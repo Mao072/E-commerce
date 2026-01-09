@@ -26,7 +26,6 @@ public class MemberRepository {
         member.setUsername(rs.getString("username"));
         member.setPassword(rs.getString("password"));
         member.setRole(rs.getString("role"));
-        member.setCreatedAt(rs.getTimestamp("created_at").toLocalDateTime());
         return member;
     };
 
