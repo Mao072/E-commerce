@@ -2,7 +2,7 @@
 
 使用 Maven 做為專案建立的工具
 
-資料庫連線: 在 ecommerce-backend\src\main\resources\application.yml 設定 
+## 資料庫連線: 在 ecommerce-backend\src\main\resources\application.yml 設定 
 
 其中9~11行
 ```
@@ -11,12 +11,17 @@
     password: 您的密碼 
 ```
 
+## 資料庫匯入
+在ecommerce-backend\DB中，有三個匯入檔案
+ddl.sql, stored_procedures.sql, dml.sql
+
+
 ### 啟動後端 (Port 8080)
 ```
 cd ecommerce-backend
 mvn spring-boot:run
 ```
-若8080已被占用，一樣在 ecommerce-backend\src\main\resources\application.yml 設定 
+若8080已被占用，一樣在 ecommerce-backend\src\main\resources\application.yml 中第一行設定 
 
 ```
 server:
