@@ -42,7 +42,7 @@ npm run dev
 | 角色 | 帳號(皆為MemberID) | 密碼(皆為password123) |
 |------|------|------|
 | 管理員 | admin | password123 |
-| 會員 | user1 | password123 |
+| 會員 | user1(458、55688、1713) | password123 |
 
 
 ## 專案結構
