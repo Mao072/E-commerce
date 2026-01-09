@@ -89,7 +89,7 @@ E-commerce/
 
 | Method | Endpoint | 權限 | 說明 |
 |--------|----------|------|------|
-| POST | /api/auth/register | 公開 | 會員註冊 |
+| POST | /api/auth/register | 公開 | 會員註冊(管理員身分自選) |
 | POST | /api/auth/login | 公開 | 會員登入 |
 | GET | /api/products | 公開 | 查詢所有商品 |
 | POST | /api/products | ADMIN | 新增商品 |
